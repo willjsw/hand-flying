@@ -36,21 +36,23 @@ async function post() {
   const blocks = parsed.blocks.map((b, i) => {
     const abs = store.safePath(dir, b.file);
     const content = store.readFile(abs);
-    let before = b.before ?? null, line = 1;
+    let before = b.before ?? null, after = b.after, line = 1;
     if (before != null) {
       // 줄 번호는 에이전트가 아니라 실제 파일에서 계산. 못 찾으면 잘못 짚은 코드이므로 게시 거부.
       if (content == null) fail(`${b.file}: before 펜스가 있지만 파일이 없습니다`);
       const at = content.indexOf(before);
       if (at < 0) fail(`${b.file}: before 구간이 파일에 없습니다. 현재 파일 내용을 그대로 옮기세요`);
       if (content.indexOf(before, at + 1) >= 0) fail(`${b.file}: before 구간이 여러 번 나옵니다. 더 넓게 잡으세요`);
-      line = store.lineOf(content, at);
+      // 마크다운은 Preview 가 그려지도록 표·문단·펜스 단위까지 넓힌다
+      if (b.lang === 'markdown') ({ before, after } = store.widenMarkdown(content, { before, after }));
+      line = store.lineOf(content, content.indexOf(before));
     } else if (content != null) {
       before = content.replace(/\n$/, ''); // before 생략 + 기존 파일 = 파일 전체 교체
     }
     const file = path.relative(dir, abs);
     // 코드가 그대로인 블록만 완료 상태를 유지
-    const done = !!old?.blocks.some((o) => o.done && o.file === file && o.after === b.after);
-    return { id: `b${i + 1}`, file, label: b.label, lang: b.lang, note: b.note, before, after: b.after, line, done };
+    const done = !!old?.blocks.some((o) => o.done && o.file === file && o.after === after);
+    return { id: `b${i + 1}`, file, label: b.label, lang: b.lang, note: b.note, before, after, line, done };
   });
   const now = new Date().toISOString();
   const commit = old
@@ -72,7 +74,14 @@ async function post() {
 }
 
 function fmt(slug, e) {
-  if (e.type === 'request') return `[request] commit=${e.commit ?? '-'}\n${e.text.replace(/^/gm, '  ')}`;
+  if (e.type === 'request') {
+    const head = `[request] commit=${e.commit ?? '-'}${e.blocks?.length ? ` blocks=${e.blocks.join(' ')}` : ''}\n${e.text.replace(/^/gm, '  ')}`;
+    if (!e.blocks?.length) return head;
+    // 사용자가 화면에서 선택한 코드 — 요청은 이 블록들에 대한 것
+    const c = store.getCommit(slug, e.commit);
+    const refs = e.blocks.map((id, i) => `    ${id} ${e.files[i]} [${c?.blocks.find((b) => b.id === id)?.label ?? '?'}]`).join('\n');
+    return `${head}\n  대상 블록 (사용자가 선택한 코드):\n${refs}\n  → 이 블록을 중심으로 고쳐 hf post --amend ${e.commit}`;
+  }
   // 이벤트에 처리법을 같이 실어 보낸다 — 에이전트가 예전 스킬을 들고 있어도 따라올 수 있게
   if (e.type === 'ai-write') {
     const ids = (e.blocks ?? [e.block]).join(' ');

@@ -43,10 +43,24 @@ export async function toggleDone(ids) {
   revalidatePath(`/p/${ids.slug}`);
 }
 
+// "파일 생성": 아직 없는 새 파일을 선언부까지의 뼈대로만 만든다. 본문은 사용자가 친다
+export async function createFile(ids) {
+  const { project, block } = load(ids);
+  if (block.before != null) throw new Error('새 파일 블록이 아닙니다');
+  store.createSkeleton(project.root, block);
+  revalidatePath(`/p/${ids.slug}`);
+}
+
 // 수정 요청: 에이전트는 답글 대신 이 단계의 코드를 고쳐(hf post --amend) 화면에 바로 반영한다.
 export async function sendRequest(ids, form) {
   const text = String(form.get('text') ?? '').trim();
   if (!text || !store.getProject(ids.slug)) return;
-  store.appendInbox(ids.slug, { from: 'user', type: 'request', commit: ids.cid, text });
+  // 화면에서 선택한 블록: 이 단계에 실제로 있는 것만 싣는다
+  const picked = new Set(form.getAll('blocks').map(String));
+  const blocks = store.getCommit(ids.slug, ids.cid)?.blocks.filter((b) => picked.has(b.id)) ?? [];
+  store.appendInbox(ids.slug, {
+    from: 'user', type: 'request', commit: ids.cid, text,
+    ...(blocks.length && { blocks: blocks.map((b) => b.id), files: blocks.map((b) => b.file) }),
+  });
   revalidatePath(`/p/${ids.slug}`);
 }
