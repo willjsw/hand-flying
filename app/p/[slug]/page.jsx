@@ -361,7 +361,7 @@ export default async function Page({ params, searchParams }) {
                 ) : (
                   <div className="empty-state">
                     <h2>아직 게시된 단계가 없습니다</h2>
-                    <p>에이전트가 이 프로젝트에서 <code>hf post</code> 로 코드를 게시하면 여기에 나타납니다.</p>
+                    <p>에이전트가 이 프로젝트에서 <code>hfl post</code> 로 코드를 게시하면 여기에 나타납니다.</p>
                   </div>
                 )}
               </article>

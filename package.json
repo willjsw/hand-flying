@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "bin": {
-    "hf": "bin/hf.mjs"
+    "hfl": "bin/hfl.mjs"
   },
   "scripts": {
     "dev": "next dev -H 127.0.0.1 -p 4100",

@@ -35,7 +35,7 @@ export default function Home() {
         <div className="empty-state">
           <h2>아직 프로젝트가 없습니다</h2>
           <p>에이전트가 프로젝트 폴더에서 코드를 게시하면 여기에 자동으로 등록됩니다.</p>
-          <pre>cd 내-프로젝트{'\n'}hf post &lt; 게시.md</pre>
+          <pre>cd 내-프로젝트{'\n'}hfl post &lt; 게시.md</pre>
         </div>
       )}
     </main>

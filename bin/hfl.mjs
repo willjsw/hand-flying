@@ -12,7 +12,7 @@ const opt = (name, def) => {
   return i >= 0 ? args[i + 1] : def;
 };
 const PORT = opt('port', process.env.HF_PORT || '4100');
-const fail = (msg) => { console.error(`hf: ${msg}`); process.exit(1); };
+const fail = (msg) => { console.error(`hfl: ${msg}`); process.exit(1); };
 const git = (gitArgs, cwd) => {
   try { return execFileSync('git', gitArgs, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(); } catch { return ''; }
 };
@@ -70,7 +70,7 @@ async function post() {
   const url = `http://127.0.0.1:${PORT}/p/${project.slug}?c=${commit.id}`;
   console.log(`${old ? '수정됨' : '게시됨'}: ${commit.title} (${blocks.length}블록) → ${url}`);
   const up = await fetch(`http://127.0.0.1:${PORT}/`, { signal: AbortSignal.timeout(800) }).catch(() => null);
-  if (!up) console.log('뷰어 서버가 꺼져 있습니다. `hf start` 로 띄우세요.');
+  if (!up) console.log('뷰어 서버가 꺼져 있습니다. `hfl start` 로 띄우세요.');
 }
 
 function fmt(slug, e) {
@@ -80,13 +80,13 @@ function fmt(slug, e) {
     // 사용자가 화면에서 선택한 코드 — 요청은 이 블록들에 대한 것
     const c = store.getCommit(slug, e.commit);
     const refs = e.blocks.map((id, i) => `    ${id} ${e.files[i]} [${c?.blocks.find((b) => b.id === id)?.label ?? '?'}]`).join('\n');
-    return `${head}\n  대상 블록 (사용자가 선택한 코드):\n${refs}\n  → 이 블록을 중심으로 고쳐 hf post --amend ${e.commit}`;
+    return `${head}\n  대상 블록 (사용자가 선택한 코드):\n${refs}\n  → 이 블록을 중심으로 고쳐 hfl post --amend ${e.commit}`;
   }
   // 이벤트에 처리법을 같이 실어 보낸다 — 에이전트가 예전 스킬을 들고 있어도 따라올 수 있게
   if (e.type === 'ai-write') {
     const ids = (e.blocks ?? [e.block]).join(' ');
     const files = (e.files ?? [e.file]).map((f, i) => `  ${(e.blocks ?? [e.block])[i]} ${f}`).join('\n');
-    return `[ai-write] commit=${e.commit} blocks=${ids}\n${files}\n  → hf apply ${e.commit} ${ids} 로 반영하고, 필요하면 컴파일·테스트 확인 후 hf done ${e.commit} ${ids}`;
+    return `[ai-write] commit=${e.commit} blocks=${ids}\n${files}\n  → hfl apply ${e.commit} ${ids} 로 반영하고, 필요하면 컴파일·테스트 확인 후 hfl done ${e.commit} ${ids}`;
   }
   const c = store.getCommit(slug, e.commit);
   const progress = c ? ` (완료 ${c.blocks.filter((b) => b.done).length}/${c.blocks.length})` : '';
@@ -110,14 +110,14 @@ async function wait() {
   }
 }
 
-// ── AI 작성: hf apply / hf done ──
+// ── AI 작성: hfl apply / hfl done ──
 // 위치 인자: --옵션 과 그 값을 뺀 나머지
 const positional = () => args.filter((a, i) => !a.startsWith('--') && !args[i - 1]?.startsWith('--'));
 
 // <커밋id> [블록id…] → 대상 블록 (블록 id 를 생략하면 그 커밋의 블록 전부)
 function target() {
   const [cid, ...bids] = positional();
-  if (!cid) fail(`커밋 id 가 필요합니다: hf ${cmd} <커밋id> [블록id…]`);
+  if (!cid) fail(`커밋 id 가 필요합니다: hfl ${cmd} <커밋id> [블록id…]`);
   const project = store.ensureProject(root());
   const commit = store.getCommit(project.slug, cid);
   if (!commit) fail(`커밋이 없습니다: ${cid}`);
@@ -142,7 +142,7 @@ function apply() {
       fs.writeFileSync(abs, out);
       console.log(`${b.id} ${b.file}: 반영함`);
     } catch (e) {
-      fail(`${b.id} ${b.file}: ${e.message}\n  → Edit 로 블록과 같은 결과를 만든 뒤 hf done 하세요`);
+      fail(`${b.id} ${b.file}: ${e.message}\n  → Edit 로 블록과 같은 결과를 만든 뒤 hfl done 하세요`);
     }
   }
 }
@@ -213,15 +213,15 @@ try {
     case 'serve': ensureBuilt(); next(NEXT_START); break;
     default:
       console.log(`사용법:
-  hf start [--port 4100]       뷰어를 백그라운드로 시작 (빌드 없으면 먼저 빌드)
-  hf stop                      백그라운드 뷰어 종료
-  hf serve [--port 4100]       뷰어를 포그라운드로 실행 (로그를 바로 볼 때)
-  hf build                     뷰어 재빌드
-  hf post [--branch 이름] < 게시.md   새 단계 게시 (stdin, 형식은 SKILL.md)
-  hf post --amend <커밋id> < 게시.md  기존 단계의 코드를 수정본으로 교체
-  hf wait [--timeout 600]      UI 이벤트(수정 요청·AI 작성 요청·완료)가 올 때까지 대기
-  hf apply <커밋id> [블록id…]   게시된 블록을 파일에 그대로 반영 (블록 생략 시 전부)
-  hf done <커밋id> [블록id…]    완료 처리. AI 작성 요청을 끝냈다는 알림
+  hfl start [--port 4100]       뷰어를 백그라운드로 시작 (빌드 없으면 먼저 빌드)
+  hfl stop                      백그라운드 뷰어 종료
+  hfl serve [--port 4100]       뷰어를 포그라운드로 실행 (로그를 바로 볼 때)
+  hfl build                     뷰어 재빌드
+  hfl post [--branch 이름] < 게시.md   새 단계 게시 (stdin, 형식은 SKILL.md)
+  hfl post --amend <커밋id> < 게시.md  기존 단계의 코드를 수정본으로 교체
+  hfl wait [--timeout 600]      UI 이벤트(수정 요청·AI 작성 요청·완료)가 올 때까지 대기
+  hfl apply <커밋id> [블록id…]   게시된 블록을 파일에 그대로 반영 (블록 생략 시 전부)
+  hfl done <커밋id> [블록id…]    완료 처리. AI 작성 요청을 끝냈다는 알림
 공통: --root <프로젝트 경로> (기본: git 루트 또는 현재 폴더)`);
   }
 } catch (e) {
