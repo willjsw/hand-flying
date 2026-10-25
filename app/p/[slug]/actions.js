@@ -10,7 +10,7 @@ function load({ slug, cid, bid }) {
   return { project, commit, block };
 }
 
-// "AI 작성": 에이전트에게 작성을 맡긴다. 에이전트가 hf apply 로 반영하고 hf done 으로 끝을 알리면
+// "AI 작성": 에이전트에게 작성을 맡긴다. 에이전트가 hfl apply 로 반영하고 hfl done 으로 끝을 알리면
 // 블록이 Done 으로 바뀐다. 그 사이에는 AI Writing.
 function askAi(slug, commit, blocks) {
   // 받을 에이전트가 없으면 "AI Writing" 에 갇힌다 — 버튼도 막혀 있지만 서버에서도 거절
@@ -43,10 +43,24 @@ export async function toggleDone(ids) {
   revalidatePath(`/p/${ids.slug}`);
 }
 
-// 수정 요청: 에이전트는 답글 대신 이 단계의 코드를 고쳐(hf post --amend) 화면에 바로 반영한다.
+// "파일 생성": 아직 없는 새 파일을 선언부까지의 뼈대로만 만든다. 본문은 사용자가 친다
+export async function createFile(ids) {
+  const { project, block } = load(ids);
+  if (block.before != null) throw new Error('새 파일 블록이 아닙니다');
+  store.createSkeleton(project.root, block);
+  revalidatePath(`/p/${ids.slug}`);
+}
+
+// 수정 요청: 에이전트는 답글 대신 이 단계의 코드를 고쳐(hfl post --amend) 화면에 바로 반영한다.
 export async function sendRequest(ids, form) {
   const text = String(form.get('text') ?? '').trim();
   if (!text || !store.getProject(ids.slug)) return;
-  store.appendInbox(ids.slug, { from: 'user', type: 'request', commit: ids.cid, text });
+  // 화면에서 선택한 블록: 이 단계에 실제로 있는 것만 싣는다
+  const picked = new Set(form.getAll('blocks').map(String));
+  const blocks = store.getCommit(ids.slug, ids.cid)?.blocks.filter((b) => picked.has(b.id)) ?? [];
+  store.appendInbox(ids.slug, {
+    from: 'user', type: 'request', commit: ids.cid, text,
+    ...(blocks.length && { blocks: blocks.map((b) => b.id), files: blocks.map((b) => b.file) }),
+  });
   revalidatePath(`/p/${ids.slug}`);
 }

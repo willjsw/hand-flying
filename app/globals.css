@@ -12,7 +12,7 @@
   --muted: #6c7078;
   --line: #eaeaea;
   --line-strong: #dddde0;
-  --focus: #1f73ca;        /* gl blue-500: focus ring */
+  --focus: #9a9ca3;        /* 포커스·선택 테두리: 무채색 */
   --primary: #1b1c1e;
   --primary-hover: #34363a;
   --on-primary: #ffffff;
@@ -44,7 +44,7 @@
     --muted: #8a8f98;
     --line: #222326;
     --line-strong: #2d2e32;
-    --focus: #3f8edd;      /* gl blue-400 */
+    --focus: #d4d6da;      /* 흰색 계열 */
     --primary: #e8e9eb;
     --primary-hover: #f6f6f7;
     --on-primary: #101112;
@@ -76,6 +76,7 @@ body {
 a { color: inherit; text-decoration: none; }
 code, pre, kbd { font-family: var(--font-mono); }
 code { font-size: 0.92em; }
+.summary code, .brief dd code, .why p code { padding: 1px 4px; border-radius: 4px; background: var(--hover); color: var(--text); }
 svg { flex: none; }
 :focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; border-radius: 4px; }
 
@@ -130,20 +131,29 @@ html.resizing .shell, html.resizing .body { transition: none; }
 .resizer:focus-visible { outline: none; }
 
 .icon-btn {
-  display: inline-grid; place-items: center; flex: none; width: 28px; height: 28px; margin: 0 2px 0 -6px;
+  position: fixed; top: 8px; z-index: 3; display: inline-grid; place-items: center; width: 28px; height: 28px;
   border: 0; border-radius: 6px; background: transparent; color: var(--muted); cursor: pointer;
 }
 .icon-btn:hover { background: var(--hover); color: var(--text); }
-.icon-btn.pane-right { margin: 0 -8px 0 auto; transform: scaleX(-1); }
-.scroll { flex: 1; overflow: auto; }
+/* 접기 버튼: Claude 데스크톱처럼 각 사이드바 맨 위에 고정. 접혀도 같은 자리라 경로 표시줄이 그만큼 비켜 준다 */
+.icon-btn.pane-left { left: 10px; }
+.icon-btn.pane-right { right: 10px; transform: scaleX(-1); }
+html[data-left='closed'] .topbar { padding-left: 50px; }
+.scroll { flex: 1; overflow: auto; scroll-behavior: smooth; }
+/* 얇고 단순한 스크롤바 */
+* { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--muted) 45%, transparent) transparent; }
 
 /* ── 사이드바 ── */
 .side {
   grid-column: 1; min-width: 0;
-  display: flex; flex-direction: column; gap: 1px; overflow: auto;
-  padding: 10px 8px 20px; background: var(--side); border-right: 1px solid var(--line);
+  display: flex; flex-direction: column; gap: 1px; overflow: hidden;
+  padding: 4px 8px 16px; background: var(--side); border-right: 1px solid var(--line);
 }
-.brand { display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 6px; margin-bottom: 4px; border-radius: 6px; }
+/* 로고·메뉴와 아래 프로젝트 표시는 고정, 브랜치 목록만 스크롤. 스크롤바는 사이드바 가장자리에 */
+.side > nav { flex: 1 1 auto; min-height: 0; overflow-y: auto; margin: 0 -8px; padding: 0 8px; }
+.brand { display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 6px; margin: 0 0 6px 32px; border-radius: 6px; }
+.side-foot { margin-top: auto; display: grid; gap: 4px; padding-top: 12px; }
+.side-foot .ws { margin: 0; }
 .brand:hover { background: var(--hover); }
 .brand img { flex: none; }
 /* 로고: 흰 바탕은 배경에 녹이고(multiply), 다크에서는 색만 뒤집어 선을 희게(invert + screen) */
@@ -183,15 +193,16 @@ details[open] > summary .caret { transform: rotate(90deg); }
 .ic-progress { color: var(--progress); }
 .ic-none { color: var(--muted); }
 
-/* ── 에이전트 연결 상태 (사이드바 맨 아래) ── */
-.agent { margin-top: auto; display: flex; align-items: center; gap: 8px; padding: 10px 8px 0; font-size: 12.5px; color: var(--text-2); }
-.agent.ok svg { color: var(--match); }
-.agent.busy { color: var(--progress-text); }
-.agent.busy .ai-stars { animation: twinkle 1.6s ease-in-out infinite; }
-.agent.off { display: block; padding: 10px; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--surface); }
-.agent-head { display: flex; align-items: center; gap: 8px; font-weight: 500; color: var(--danger); }
-.agent-head small { margin-left: auto; font-weight: 400; font-size: 11px; color: var(--muted); }
-.agent.off p { margin: 6px 0 8px; font-size: 12px; line-height: 1.5; color: var(--muted); }
+/* ── 에이전트 연결 상태: 프로젝트 줄 오른쪽 색 점 ── */
+.ws-row { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.ws-row .ws { flex: 1; min-width: 0; margin: 0; }
+.agent-dot { flex: none; display: inline-flex; align-items: center; gap: 6px; padding-right: 8px; font-size: 12px; color: var(--text-2); white-space: nowrap; }
+.agent-dot i { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+.agent-dot.waiting i { background: var(--match); }
+.agent-dot.working i { background: var(--progress); animation: twinkle 1.6s ease-in-out infinite; }
+.agent-dot.off i { background: var(--danger); }
+.agent-help { margin-top: 4px; padding: 10px; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--surface); }
+.agent-help p { margin: 0 0 8px; font-size: 12px; line-height: 1.5; color: var(--muted); }
 .resume {
   display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; padding: 6px 8px;
   border: 1px solid var(--line); border-radius: 6px; background: var(--side); color: var(--text); cursor: pointer;
@@ -201,7 +212,7 @@ details[open] > summary .caret { transform: rotate(90deg); }
 
 /* ── 상단 경로 ── */
 .topbar {
-  display: flex; align-items: center; gap: 6px; flex: none; height: 44px; padding: 0 20px;
+  display: flex; align-items: center; gap: 6px; flex: none; height: 44px; padding: 0 50px 0 20px;
   border-bottom: 1px solid var(--line); color: var(--text-2); overflow: hidden;
 }
 .crumb { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
@@ -211,9 +222,16 @@ a.crumb:hover { color: var(--text); }
 
 /* ── 문서 ── */
 .doc { max-width: 880px; margin: 0 auto; padding: 36px 40px 48px; }
-.doc h1 { margin: 0 0 10px; font-size: 22px; line-height: 1.3; font-weight: 600; letter-spacing: -0.015em; }
+.doc h1 { margin: 0 0 14px; font-size: 22px; line-height: 1.3; font-weight: 600; letter-spacing: -0.015em; }
+/* 제목 밑 상태 줄 (GitLab 이슈 머리 참고): 상태 pill + 최초 게시 시각 */
+.state-line { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 0 0 30px; font-size: 13px; color: var(--muted); }
+.state { display: inline-flex; align-items: center; gap: 5px; height: 24px; padding: 0 10px; border-radius: 9999px; font-size: 12.5px; font-weight: 500; }
+.state.todo { background: var(--hover); color: var(--text-2); }
+.state.progress { background: var(--progress-soft); color: var(--progress-text); }
+.state.done { background: var(--done-soft); color: var(--done-text); }
+.posted span::before { content: '·'; margin: 0 6px; }
 .summary { max-width: 68ch; margin: 0 0 32px; font-size: 14px; line-height: 1.65; color: var(--text-2); white-space: pre-wrap; }
-.doc-meta, .doc-files { display: none; }
+.doc-files { display: none; }
 .brief { display: grid; gap: 10px; max-width: 72ch; margin: 0 0 20px; }
 .brief div { display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: 14px; }
 .brief dt { font-size: 12.5px; font-weight: 650; line-height: 23px; color: var(--text); letter-spacing: .01em; }
@@ -228,6 +246,9 @@ a.crumb:hover { color: var(--text); }
   background: var(--hover); color: var(--text-2); font: 600 11px/1 var(--font-mono);
 }
 .order p { margin: 0; white-space: pre-wrap; }
+.order li a { color: inherit; text-decoration: none; }
+.order li a:hover { color: var(--done); }
+.block:target { border-color: var(--focus); }
 
 /* ── 코드 블록 ── */
 .block {
@@ -238,27 +259,40 @@ a.crumb:hover { color: var(--text); }
 }
 @keyframes rise { from { opacity: 0; transform: translateY(8px); } }
 .bhead {
-  display: grid; grid-template-columns: 12px 14px minmax(0, 1fr) 76px 104px; gap: 4px 8px; align-items: center;
+  display: grid; grid-template-columns: 12px 14px minmax(0, 1fr) auto; gap: 4px 8px; align-items: center;
   padding: 10px 12px 9px; border-bottom: 1px solid var(--line); cursor: pointer; list-style: none;
 }
 .bhead::-webkit-details-marker { display: none; }
 .bhead:hover { background: var(--hover); }
 .block:not([open]) > .bhead { border-bottom: 0; }
 .ficon { color: var(--muted); }
-.fname { grid-column: 3; font: 600 13.5px var(--font-mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.bstatus { grid-column: 5; justify-self: end; display: flex; }
-.bmeta { grid-column: 3 / -1; display: flex; align-items: center; gap: 8px; min-width: 0; }
-.bmeta .sym { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.sym { font: 12px var(--font-mono); color: var(--muted); overflow-wrap: anywhere; }
-.lines { grid-column: 4; justify-self: end; font: 11.5px/1.4 var(--font-mono); color: var(--muted); white-space: nowrap; }
+.ftitle { grid-column: 3; display: flex; align-items: center; gap: 8px; min-width: 0; }
+.ftitle .tag { flex: none; }
+.fname { min-width: 0; font: 600 13.5px var(--font-mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bright { grid-column: 4; justify-self: end; display: flex; align-items: center; gap: 6px; }
 .fpath { grid-column: 3 / -1; font: 11.5px/1.4 var(--font-mono); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ai-all { display: flex; justify-content: flex-end; margin: 4px 0 24px; }
 .ai-all .btn { height: 32px; padding: 0 14px; }
 /* 내용 라벨(imports, constructor …): GitLab 배지 모양. 상태 칩(완료)은 채운 색으로 구분 */
 .tag {
+  --k: #868686;
   display: inline-flex; align-items: center; height: 20px; padding: 0 9px; border-radius: 9999px;
-  font: 500 11.5px var(--font-sans); background: var(--done-soft); color: var(--done-text); white-space: nowrap;
+  font: 500 11.5px var(--font-sans); white-space: nowrap;
+  background: color-mix(in srgb, var(--k) 16%, transparent);
+  color: color-mix(in srgb, var(--k) 65%, var(--text));
 }
+/* 범주 팔레트 (고정) */
+.k-imports { --k: #868686; }
+.k-field { --k: #1f9e97; }
+.k-constructor { --k: #c2479c; }
+.k-method { --k: #1f73ca; }
+.k-type { --k: #d4741f; }
+.k-test { --k: #2e8a4c; }
+.k-block { --k: #6b7d99; }
+.k-query { --k: #b38b00; }
+.k-key { --k: #0f87b5; }
+.k-section { --k: #8a6a4f; }
+.k-file { --k: #7a8a2e; }
 .range, .stat { font: 11.5px/1.4 var(--font-mono); color: var(--muted); white-space: nowrap; }
 .stat { display: inline-flex; gap: 6px; }
 i.add { color: var(--match); font-style: normal; }
@@ -279,10 +313,11 @@ i.del { color: var(--danger); font-style: normal; }
 .btn.ai-busy:disabled { opacity: 1; color: var(--progress-text); }
 
 .why {
-  display: flex; gap: 12px; padding: 10px 12px; border-bottom: 1px solid var(--line);
-  font-size: 13.5px; line-height: 1.6; color: var(--text-2);
+  display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: 14px;
+  padding: 12px 14px; border-bottom: 1px solid var(--line); font-size: 14px; line-height: 1.65; color: var(--text-2);
 }
-.why b { flex: none; font-size: 11.5px; font-weight: 500; line-height: 21.6px; color: var(--muted); }
+/* Explain: Context·Purpose 와 같은 라벨 글씨 */
+.why b { font-size: 12.5px; font-weight: 650; line-height: 23px; color: var(--text); letter-spacing: .01em; }
 .why p { margin: 0; max-width: 75ch; white-space: pre-wrap; }
 
 .code { background: var(--code-bg); overflow-x: auto; }
@@ -313,37 +348,94 @@ i.del { color: var(--danger); font-style: normal; }
 .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; padding: 6px 8px; border-top: 1px solid var(--line); }
 .actions form { margin: 0; }
 .actions .spacer { flex: 1; }
+.seg { display: inline-flex; margin-left: 6px; padding: 2px; gap: 2px; border: 1px solid var(--line-strong); border-radius: 7px; }
+.seg button {
+  height: 24px; padding: 0 9px; border: 0; border-radius: 5px; background: none;
+  font: 500 12px var(--font-sans); color: var(--muted); cursor: pointer;
+}
+.seg button:hover { color: var(--text); }
+.seg button[aria-pressed="true"] { background: var(--hover); color: var(--text); }
+
+/* 마크다운 Preview: 블록의 data-view 로 코드와 바꿔 보인다 */
+.block .md, .block[data-view="preview"] .code { display: none; }
+.block[data-view="preview"] .md { display: block; }
+.md { padding: 16px 28px 20px; font-size: 14px; line-height: 1.7; color: var(--text); overflow-wrap: anywhere; }
+.md > :first-child { margin-top: 0; }
+.md > :last-child { margin-bottom: 0; }
+.md h1, .md h2, .md h3, .md h4 { margin: 1.4em 0 .5em; line-height: 1.3; font-weight: 650; }
+.md h1 { font-size: 1.5em; padding-bottom: .3em; border-bottom: 1px solid var(--line); }
+.md h2 { font-size: 1.25em; padding-bottom: .25em; border-bottom: 1px solid var(--line); }
+.md h3 { font-size: 1.08em; }
+.md p, .md ul, .md ol, .md blockquote, .md pre, .md table { margin: 0 0 1em; }
+.md ul, .md ol { padding-left: 1.6em; }
+.md li + li { margin-top: .25em; }
+.md a { color: var(--done); text-decoration: underline; text-underline-offset: 2px; }
+.md code { padding: 1px 5px; border-radius: 4px; background: var(--hover); }
+.md pre { padding: 12px 14px; border-radius: 8px; background: var(--hover); overflow-x: auto; line-height: 1.55; }
+.md pre code { padding: 0; background: none; font-size: 12.5px; }
+.md blockquote { padding: 0 1em; border-left: 3px solid var(--line-strong); color: var(--text-2); }
+.md table { border-collapse: collapse; display: block; overflow-x: auto; }
+.md th, .md td { padding: 6px 12px; border: 1px solid var(--line-strong); }
+.md th { background: var(--hover); font-weight: 600; }
+.md hr { border: 0; border-top: 1px solid var(--line); margin: 1.5em 0; }
+.md img { max-width: 100%; }
 .err {
   display: flex; align-items: center; gap: 6px; width: 100%; margin: 4px 0 2px; padding: 7px 10px;
   border-radius: 6px; background: var(--danger-soft); color: var(--danger); font-size: 12px;
 }
 
 /* ── 속성 패널 ── */
-.rail { grid-column: 2; min-width: 0; overflow: auto; padding: 18px 16px 24px; border-left: 1px solid var(--line); }
-.rail section + section { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); }
-.rail h3 { margin: 0 0 10px; font-size: 11.5px; font-weight: 500; color: var(--muted); }
+.rail { grid-column: 2; min-width: 0; overflow: auto; display: flex; flex-direction: column; gap: 12px; padding: 14px 14px 20px 6px; }
+/* 떠 있는 카드: 구분선 대신 둥근 테두리 + 아주 옅은 그림자 */
+.rail-card {
+  flex: none; padding: 12px 14px 14px; background: var(--surface);
+  border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 1px 3px rgb(0 0 0 / .04);
+}
+.rail-card > summary {
+  display: flex; align-items: center; gap: 6px; list-style: none; cursor: pointer;
+  font-size: 12.5px; font-weight: 500; color: var(--text-2);
+}
+.rail-card > summary::-webkit-details-marker { display: none; }
+.rail-card > summary:hover { color: var(--text); }
+.rail-card[open] > summary { margin-bottom: 12px; }
+.rail-card .chev { color: var(--muted); transition: transform .15s; }
+.rail-card:not([open]) .chev { transform: rotate(-90deg); }
 .props { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 10px 8px; margin: 0; align-items: center; }
 .props dt { color: var(--muted); }
 .props dd { display: flex; align-items: center; gap: 6px; min-width: 0; margin: 0; overflow-wrap: anywhere; }
 .filelist { list-style: none; margin: 0; padding: 0; }
-.filelist a {
-  display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 8px; align-items: center;
-  margin: 0 -8px; padding: 7px 8px; border-radius: 6px;
-}
+.filelist a { display: flex; align-items: center; gap: 8px; margin: 0 -8px; padding: 5px 8px; border-radius: 6px; }
 .filelist a:hover { background: var(--hover); }
-.filelist .f { display: flex; gap: 6px; align-items: center; font: 500 12.5px/1.45 var(--font-mono); overflow-wrap: anywhere; min-width: 0; }
-.filelist .sym { font-size: 11px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 120px; }
-.filelist .sub { grid-column: 2; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
-.filelist .sub .stat { margin-left: auto; }
+.filelist .f { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; font: 500 12.5px/1.45 var(--font-mono); }
+.filelist .fn { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.filelist .f .ficon, .filelist .f .tag, .filelist .stat { flex: none; }
 
 /* ── 수정 요청 바 ── */
-.request { flex: none; padding: 0 40px; border-top: 1px solid var(--line); }
+.request { position: relative; z-index: 1; flex: none; padding: 0 40px; }
+/* 글이 입력창 위에서 끊기는 자리를 배경색으로 흐리게 */
+.request::before {
+  content: ''; position: absolute; left: 0; right: 12px; bottom: 100%; height: 40px; pointer-events: none;
+  background: linear-gradient(to bottom, transparent, var(--bg));
+}
 .request .composer { max-width: 800px; margin: 12px auto 16px; }
 .composer {
   background: var(--surface); border: 1px solid var(--line-strong); border-radius: 8px;
   transition: border-color .15s, box-shadow .15s;
 }
 .composer:focus-within { border-color: var(--focus); box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 16%, transparent); }
+/* 선택한 코드 블록: 머리글처럼 파일명 + 범주, 끝의 x 로 뺀다 */
+.refs { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 10px 0; }
+.ref {
+  display: inline-flex; align-items: center; gap: 6px; max-width: 100%; height: 26px; padding: 0 3px 0 11px;
+  border: 1px solid var(--line-strong); border-radius: 9999px; background: var(--bg); font-size: 12px; color: var(--text);
+}
+.ref .tag { height: 16px; padding: 0 6px; font-size: 10.5px; }
+.ref .fn { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-mono); }
+.ref button {
+  display: grid; place-items: center; width: 20px; height: 20px; border: 0; border-radius: 9999px;
+  background: none; color: var(--muted); cursor: pointer;
+}
+.ref button:hover { background: var(--hover); color: var(--text); }
 .composer textarea {
   display: block; width: 100%; min-height: 44px; max-height: 30vh; resize: none;
   padding: 10px 12px 2px; border: 0; outline: none; background: transparent;
@@ -376,13 +468,12 @@ i.del { color: var(--danger); font-style: normal; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; animation: none !important; }
+  .scroll { scroll-behavior: auto; }
 }
 /* 좁은 화면: 속성 패널을 접고 문서 안에 요약을 보인다 */
 @media (max-width: 1099px) {
   .body { grid-template-columns: minmax(0, 1fr); }
   .rail, .pane-right, .resizer-right { display: none; }
-  .doc-meta { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-bottom: 10px; font: 12px var(--font-mono); color: var(--muted); }
-  .doc-meta span { display: inline-flex; align-items: center; gap: 5px; }
   .doc-files { display: block; margin: -12px 0 24px; padding: 6px 16px; border: 1px solid var(--line); border-radius: 8px; }
 }
 @media (max-width: 767px) {
@@ -395,6 +486,5 @@ i.del { color: var(--danger); font-style: normal; }
   .scroll { overflow: visible; }
   .doc { padding-left: 16px; padding-right: 16px; }
   .request { position: sticky; bottom: 0; padding: 0 16px; background: var(--bg); }
-  .bhead { grid-template-columns: 12px 14px minmax(0, 1fr) auto auto; }
   .keys { display: none; }
 }
